@@ -1,1 +1,34 @@
-.venv
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Streamlit specific
+.streamlit/
+*.streamlit_temp
+*.streamlit_state
+*.streamlit_log
+
+# IDE specific files (e.g., VS Code)
+.vscode/
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+
+# Temporary files
+*~
+*.bak
+*.tmp
+
+# Environment variables (if not managed by other means)
+.env
