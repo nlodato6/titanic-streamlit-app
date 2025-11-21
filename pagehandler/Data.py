@@ -1,11 +1,13 @@
 #pagehandler/Data.py
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 
 st.title("📊 Data Exploration")
 st.write("Preview and describe the Titanic dataset here.")
 
 tab1, tab2, tab3, tab4 = st.tabs(["Data Overview", "train.csv", "test.csv", "gender_submission.csv"])
+
 #load dataframes from csv
 train_df = pd.read_csv("titanic-data/train.csv" )
 test_df = pd.read_csv("titanic-data/test.csv")
@@ -48,6 +50,57 @@ with tab2:
     with st.expander("Training Data"):
         st.write(train_df) 
     
+    with st.expander("Survival Rate by Age and Sex"):
+        # copy only the columns needed from train_df and drop and rows where the needed are empty
+        df = train_df[['Age', 'Sex', 'Survived']].copy()
+        df = df.dropna(subset=['Age', 'Sex', 'Survived'])
+
+        # bin by 5 years
+        bin_width = 5
+        max_age = int(df['Age'].max()) + 1
+        bins = list(range(0, max_age + bin_width, bin_width))
+
+        # Build labels and cut into bins; drop outside-bin ages
+        labels = []
+        for i in range(len(bins) - 1):
+            labels.append(f"{int(bins[i])}-{int(bins[i+1])}")
+
+        df['AgeBin'] = pd.cut(df['Age'], bins=bins, labels=labels, right=False)
+        df = df.dropna(subset=['AgeBin'])
+
+        def mid_from_label(lbl):
+            a, b = lbl.split('-')
+            return (float(a) + float(b)) / 2
+
+        df['age_mid'] = df['AgeBin'].astype(str).apply(mid_from_label)
+
+        # Aggregate survival rate and counts
+        grouped = df.groupby(['age_mid', 'AgeBin', 'Sex'], observed=True).agg(
+            SurvivalRate=('Survived', 'mean'),
+            Count=('Survived', 'count')
+        ).reset_index().sort_values('age_mid')
+
+        # Plot percent y-axis
+        grouped['SurvPct'] = grouped['SurvivalRate'] * 100
+
+        fig = px.line(
+            grouped,
+            x='age_mid',
+            y='SurvPct',
+            color='Sex',
+            markers=True,
+            labels={'age_mid': 'Age (bin midpoint)', 'SurvPct': 'Survival rate (%)'}
+        )
+
+        # Add readable bin label and count to hover
+        fig.update_traces(
+            hovertemplate="<br>Bin: %{customdata[0]}<br>Survival: %{y:.1f}%<br>Count: %{customdata[1]}",
+            customdata=grouped[['AgeBin', 'Count']].values
+        )
+        fig.update_layout(hovermode='x unified', xaxis=dict(tickmode='array', tickvals=grouped['age_mid'].unique()))
+
+        st.plotly_chart(fig, use_container_width=True)
+
 with tab3:
     st.header("test.csv Data")
     st.markdown(
@@ -60,6 +113,7 @@ with tab3:
             )
     with st.expander("Passanger Data"):
         st.write(test_df) 
+
 with tab4:
     st.header("gender_submission.csv Data")
     st.markdown(
